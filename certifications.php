@@ -76,5 +76,4 @@
         <p>&copy; 2024 Anjiya</p>
     </footer>
 </body>
-
 </html>
