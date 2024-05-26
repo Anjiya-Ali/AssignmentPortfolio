@@ -1,0 +1,31 @@
+trigger:
+- master
+
+variables:
+  vmImageName: 'ubuntu-latest'
+  # Environment name
+  environmentName: 'environment-name'
+  # Root folder under which your composer.json file is available.
+  rootFolder: $(System.DefaultWorkingDirectory)
+
+stages:
+- stage: Build
+  displayName: Build stage
+  variables:
+    phpVersion: '8.1'
+  jobs:
+  - job: BuildJob
+    steps:
+    - script: |
+        sudo apt-get update
+        sudo apt-get install php8.1
+        sudo apt-get install -y php8.1-phpdbg
+        sudo apt-get install -y php8.1-cgi
+        sudo update-alternatives --set php /usr/bin/php$(phpVersion)
+        sudo update-alternatives --set phar /usr/bin/phar$(phpVersion)
+        sudo update-alternatives --set phpdbg /usr/bin/phpdbg$(phpVersion)
+        sudo update-alternatives --set php-cgi /usr/bin/php-cgi$(phpVersion)
+        sudo update-alternatives --set phar.phar /usr/bin/phar.phar$(phpVersion)
+        php -version
+      workingDirectory: $(rootFolder)
+      displayName: 'Use PHP version $(phpVersion)'

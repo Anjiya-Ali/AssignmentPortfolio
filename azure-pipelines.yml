@@ -1,0 +1,72 @@
+trigger:
+- master
+
+variables:
+  vmImageName: 'ubuntu-latest'
+  # Environment name
+  environmentName: 'environment-name'
+  # Root folder under which your composer.json file is available.
+  rootFolder: $(System.DefaultWorkingDirectory)
+  phpVersion: '8.1'
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: '3b0c29b1-6d8a-4f29-a934-5117c6e9b286'
+  imageRepository: 'portfolioassignment'
+  containerRegistry: 'portfolioassignment.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+  azureServiceConnection: 'Azure for Students (991fd2c4-e56a-4cb1-9aeb-5fe4a5a9f8b7)'
+  resourceGroup: 'portfolioassignments_group'
+  location: 'East US'
+  subscriptionId: '991fd2c4-e56a-4cb1-9aeb-5fe4a5a9f8b7'
+
+stages:
+- stage: Deploy
+  jobs:
+  - job: Deploy
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: Deploy App Service using Bicep
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: $(azureServiceConnection)
+        subscriptionId: $(subscriptionId)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(resourceGroup)'
+        location: '$(location)'
+        templateLocation: 'Linked artifact'
+        csmFile: 'main.bicep'
+        deploymentMode: 'Incremental'
+
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: BuildJob
+    displayName: Install PHP and Build Docker Image
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - script: |
+        sudo apt-get update
+        sudo apt-get install php8.1
+        sudo apt-get install -y php8.1-phpdbg
+        sudo apt-get install -y php8.1-cgi
+        sudo update-alternatives --set php /usr/bin/php$(phpVersion)
+        sudo update-alternatives --set phar /usr/bin/phar$(phpVersion)
+        sudo update-alternatives --set phpdbg /usr/bin/phpdbg$(phpVersion)
+        sudo update-alternatives --set php-cgi /usr/bin/php-cgi$(phpVersion)
+        sudo update-alternatives --set phar.phar /usr/bin/phar.phar$(phpVersion)
+        php -version
+      workingDirectory: $(rootFolder)
+      displayName: 'Use PHP version $(phpVersion)'
+    
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
